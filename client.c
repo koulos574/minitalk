@@ -1,75 +1,96 @@
- #include <unistd.h>    
- #include <sys/types.h>
- #include <signal.h>
- #include <stdlib.h>
- #include <stdio.h>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   client.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: vifontai <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2022/01/26 18:48:52 by vifontai          #+#    #+#             */
+/*   Updated: 2022/01/26 19:18:13 by vifontai         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-void	send_null(int pid)
+#include	"minitalk.h"
+
+/*
+** j = (av[2][i] & (1 << bitshift));
+** here we will compare the char with 1
+** 1 -> 00000001 and then we will shift to the left to make our int bigger
+** than 0 or not so it can know wether it has to send sigusr1 or sigusr2
+** usleep just in let the signals go
+*/
+
+/*
+** to check if there is no char and it's only numbers
+*/
+int	ft_isdigit(int c)
 {
-	int	i = 0;
-
-	while (i++ != 8)
-		kill(pid, SIGUSR1);
+	if (c >= '0' && c <= '9')
+		return (1);
+	return (0);
 }
 
-
-void	conversion_char(int pid, char c)
+void	check_params(int ac, char **av)
 {
-   int		i;
-   int		bitshift;
+	int	i;
 
-   bitshift = -1;
-   while (++bitshift < 8)
-   {
-   	if (c & 0x80 >> bitshift)
-   		kill(pid, SIGUSR1);
-      else
-   		kill(pid, SIGUSR2);
-      usleep(100);
-   }
+	i = 0;
+	if (ac != 3)
+	{
+		printf("Wrong param, it should be ./client [PID] [Your sentence]\n");
+		exit (1);
+	}
+	if (av[1][0] == '\0')
+	{
+		printf("Please check the PID, it's not the right one\n");
+		exit(1);
+	}
+	while (av[1][i])
+	{
+		if ((!(ft_isdigit(av[1][i])) || atoi(av[1]) == 0))
+		{
+			printf("Please only numbers and 0 only is not allowed\n");
+			exit(1);
+		}
+		i++;
+	}
 }
 
-void  launch(int pid, char **av)
+void	send_signal(int pid, char **av)
 {
-   // int j;
+	int	i;
+	int	j;
+	int	bitshift;
 
-   // j = 0;
-   // while (av[2][j])
-   // {
-   //    conversion_char(pid, av[2][j]);
-   //    j++;
-   // }
-   // send_null(pid);
-   int i;
-   int j;
-   int bitshift;
-
-   j = 0;
-   i = 0;
-   while (1)
-   {
-      bitshift = 7;
-      while (bitshift >= 0)
-      {
-         j = (av[2][i] & (1 << bitshift));
-   	   if (j > 0)
-   		   kill(pid, SIGUSR1);
-         else
-   	   	kill(pid, SIGUSR2);
-         usleep(100);
-         bitshift--;
-      }
-      if (av[2][i] == '\0')
-         break;
-      i++;
-   }
+	j = 0;
+	i = 0;
+	while (1)
+	{
+		bitshift = 7;
+		while (bitshift >= 0)
+		{
+			j = (av[2][i] & (1 << bitshift--));
+			if (j > 0)
+			{
+				if (kill(pid, SIGUSR1) == -1)
+					exit (1);
+			}
+			else
+				if (kill(pid, SIGUSR2) == -1)
+					exit (1);
+			usleep(100);
+		}
+		if (av[2][i++] == '\0')
+			break ;
+	}
 }
 
-int	main(int argc, char *argv[])
+int	main(int argc, char **argv)
 {
-   int		pid;
+	int	pid;
 
-   pid = atoi(argv[1]);
-   launch(pid,argv);
-   return (0);
+	check_params(argc, argv);
+	pid = atoi(argv[1]);
+	send_signal(pid, argv);
+	return (0);
 }
